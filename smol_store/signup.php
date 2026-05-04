@@ -5,7 +5,9 @@
 session_start();
 require_once 'auth_helpers.php';
 
-if (isset($_SESSION['user_id']) && isset($_SESSION['verified'])) {
+// FIX: was checking $_SESSION['verified'] which is never set anywhere.
+// The correct check is whether the user is already fully logged in.
+if (isset($_SESSION['user_id'])) {
     header("Location: dashboard.php");
     exit();
 }
@@ -32,10 +34,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup_submit'])) {
     } else {
         // Check if email already registered
         $safe_email = $conn->real_escape_string($email);
-        $check = $conn->query("SELECT user_id FROM Users WHERE email = '$safe_email' LIMIT 1");
+        $check = $conn->query("SELECT user_id, is_verified FROM Users WHERE email = '$safe_email' LIMIT 1");
 
         if ($check && $check->num_rows > 0) {
-            $error = "An account with that email already exists. <a href='index.php'>Sign in instead?</a>";
+            $existing = $check->fetch_assoc();
+            if ($existing['is_verified'] == 1) {
+                // Fully registered account — tell them to sign in
+                $error = "An account with that email already exists. <a href='index.php'>Sign in instead?</a>";
+            } else {
+                // Unverified account left over — resend OTP instead of duplicating the row
+                $existing_id = (int) $existing['user_id'];
+                $user_row = $conn->query("SELECT username FROM Users WHERE user_id = $existing_id")->fetch_assoc();
+                $otp  = generateOTP();
+                saveOTP($existing_id, $otp);
+                // FIX: sendOTPEmail only accepts 3 params — removed bogus 4th arg
+                $sent = sendOTPEmail($email, $user_row['username'], $otp);
+                if ($sent) {
+                    $_SESSION['pending_user_id'] = $existing_id;
+                    $_SESSION['pending_email']   = $email;
+                    header("Location: verify_otp.php");
+                    exit();
+                } else {
+                    $error = "Failed to send verification email. Please try again.";
+                }
+            }
         } else {
             // Create the account (unverified)
             $safe_username = $conn->real_escape_string($username);
@@ -46,15 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup_submit'])) {
 
             $new_user_id = $conn->insert_id;
 
-            // Generate & send OTP
+            // FIX: saveOTP only accepts 2 params — removed bogus 3rd arg
             $otp  = generateOTP();
-            saveOTP($new_user_id, $otp, 'signup');
-            $sent = sendOTPEmail($email, $username, $otp, 'signup');
+            saveOTP($new_user_id, $otp);
+
+            // FIX: sendOTPEmail only accepts 3 params — removed bogus 4th arg
+            $sent = sendOTPEmail($email, $username, $otp);
 
             if ($sent) {
                 $_SESSION['pending_user_id'] = $new_user_id;
                 $_SESSION['pending_email']   = $email;
-                $_SESSION['pending_purpose'] = 'signup';
                 header("Location: verify_otp.php");
                 exit();
             } else {
