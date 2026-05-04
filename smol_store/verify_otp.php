@@ -6,9 +6,15 @@
 session_start();
 require_once 'auth_helpers.php';
 
-// Must come from the signup flow
+// FIX: If user is already fully logged in, send to dashboard
+if (isset($_SESSION['user_id'])) {
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Must come from the signup flow — pending session keys required
 if (!isset($_SESSION['pending_user_id']) || !isset($_SESSION['pending_email'])) {
-    header("Location: index.php");
+    header("Location: signup.php");
     exit();
 }
 
@@ -20,15 +26,27 @@ $error     = "";
 $resend_ok = "";
 $verified  = false;   // flips to true after correct OTP → shows success screen
 
+// We need the username for the success screen before we potentially clear the session,
+// so fetch it once up front.
+$conn     = db();
+$user_row = $conn->query("SELECT * FROM Users WHERE user_id = $user_id LIMIT 1")->fetch_assoc();
+
+// FIX: Guard against a deleted or missing user_id in session
+if (!$user_row) {
+    session_unset();
+    header("Location: signup.php");
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $conn = db();
 
     // ── Resend OTP ────────────────────────────────────────
     if (isset($_POST['resend_otp'])) {
-        $user = $conn->query("SELECT username FROM Users WHERE user_id = $user_id")->fetch_assoc();
         $otp  = generateOTP();
         saveOTP($user_id, $otp);
-        $sent = sendOTPEmail($email, $user['username'], $otp);
+        // FIX: sendOTPEmail only takes 3 params — was previously correct here but
+        // keeping explicit for clarity
+        $sent = sendOTPEmail($email, $user_row['username'], $otp);
         $resend_ok = $sent
             ? "A new code was sent to $masked."
             : "Failed to resend. Please try again.";
@@ -46,13 +64,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (verifyOTP($user_id, $digits)) {
             // ── Correct — mark account verified & log in ──
             $conn->query("UPDATE Users SET is_verified = 1 WHERE user_id = $user_id");
-            $user = $conn->query("SELECT * FROM Users WHERE user_id = $user_id")->fetch_assoc();
 
-            // Clear pending keys, set full session
+            // FIX: Clear pending keys BEFORE setting the real session,
+            // and capture username from the pre-fetched row so it's available
+            // to the success screen's PHP echo below.
+            $verified_username = $user_row['username'];
+            $verified_email    = $user_row['email'];
+
             unset($_SESSION['pending_user_id'], $_SESSION['pending_email']);
-            $_SESSION['user_id']  = $user['user_id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['email']    = $user['email'];
+
+            $_SESSION['user_id']  = $user_id;
+            $_SESSION['username'] = $verified_username;
+            $_SESSION['email']    = $verified_email;
 
             $verified = true;   // show success screen
         } else {
@@ -60,6 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// For the success screen name display — use verified_username if set, else session
+$display_name = $verified
+    ? ($verified_username ?? $_SESSION['username'] ?? '')
+    : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -287,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <h2 class="success-title">You're verified!</h2>
         <p class="success-msg">
-            Welcome to CornerStop, <strong><?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></strong>.<br>
+            Welcome to CornerStop, <strong><?php echo htmlspecialchars($display_name); ?></strong>.<br>
             Your email has been confirmed and your account is ready.
         </p>
 
@@ -298,7 +326,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <?php if ($verified): ?>
         <script>
-            // Auto-redirect after 3 seconds (matches progress bar animation)
             setTimeout(function() {
                 window.location.href = 'dashboard.php';
             }, 3000);
