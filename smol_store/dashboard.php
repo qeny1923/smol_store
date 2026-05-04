@@ -117,7 +117,7 @@ $low_stock_items = $conn->query("
  
     <div class="page-header">
         <h1>Operations Dashboard</h1>
-        <p><?php echo date('l, F j, Y'); ?> &nbsp;·&nbsp; <?php echo date('g:i A'); ?></p>
+        <p></p>
     </div>
  
     <!-- ── KPI CARDS ─────────────────────────────────────── -->

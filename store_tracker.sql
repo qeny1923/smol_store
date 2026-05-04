@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 04, 2026 at 03:30 AM
+-- Generation Time: May 04, 2026 at 04:37 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -81,6 +81,13 @@ CREATE TABLE `otp_tokens` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `otp_tokens`
+--
+
+INSERT INTO `otp_tokens` (`token_id`, `user_id`, `otp_code`, `purpose`, `expires_at`, `used`, `created_at`) VALUES
+(3, 4, '044584', 'signup', '2026-05-04 09:54:11', 1, '2026-05-04 09:44:11');
+
 -- --------------------------------------------------------
 
 --
@@ -125,7 +132,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password_hash`, `role`, `email`, `is_verified`, `created_at`) VALUES
-(1, 'qaiserth2005@gmail.com', '$2y$10$placeholder', 'admin', 'qaiserth2005@gmail.com', 1, '2026-05-04 08:55:27');
+(1, 'qaiserth2005@gmail.com', '$2y$10$placeholder', 'admin', 'qaiserth2005@gmail.com', 1, '2026-05-04 08:55:27'),
+(4, 'boss', '$2y$10$Vym/ue00Wubh2X3njMJciue22MJ.CJ7OPjpiHgRne9CMNGo/HStO.', 'admin', 'fastestflash1995@gmail.com', 1, '2026-05-04 09:44:11');
 
 --
 -- Indexes for dumped tables
@@ -188,7 +196,7 @@ ALTER TABLE `orders`
 -- AUTO_INCREMENT for table `otp_tokens`
 --
 ALTER TABLE `otp_tokens`
-  MODIFY `token_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `token_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `products`
@@ -200,7 +208,7 @@ ALTER TABLE `products`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables

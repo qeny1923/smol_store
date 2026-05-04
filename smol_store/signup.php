@@ -246,9 +246,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup_submit'])) {
     <form method="POST" class="auth-form" id="signupForm">
 
         <div class="form-group">
-            <label class="label-small">Display Name</label>
+            <label class="label-small">Username</label>
             <input type="text" name="username" class="form-control"
-                   placeholder="e.g. Qaiser"
+                   placeholder="e.g. Bossing"
                    value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
                    required autofocus>
         </div>
